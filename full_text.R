@@ -1,29 +1,87 @@
 ## Purpose: Verify inventory articles with full text available in Europe PMC
-## Parts: 1) retrieve records from query with full text and OA filter and then compare ID list with the IDs in the inventory
-## Package(s): europepmc, tidyverse
-## Input file(s): processed_manual_review.csv (temp! until final inventory file is available)
-## Output file(s): inventory_FT_OA_ids_2022-11-21.csv
+## Parts: 
+## Package(s): europepmc, tidyverse, xml2
+## Input file(s): 
+## Output file(s): 
 
 library(europepmc)
+library(tidypmc)
 library(tidyverse)
-  
-## get IDs from inventory
+library(xml2)
+library(tidytext)
 
-all <- read.csv("funders_geo_200.csv")
-inv <- inventory
-inv <- separate(inv, 'ID', paste("ID", 1:30, sep="_"), sep=",", extra="drop")
-inv <- inv[,colSums(is.na(inv))<nrow(inv)]
-inv[, c(1:14)] <- sapply(inv[, c(1:14)],as.numeric)
+##===========================================##
+####### PART 1: Get IDs ready for query ####### 
+##===========================================##
 
-ids <- select(inv, 1:14)
-ids <- melt(ids, na.rm = TRUE, value.name = "ID")
-id_list <- ids$ID
-id_list <- as.data.frame(id_list)
-names(id_list)[1] ="id"
-id_list$id <- as.character(id_list$id)
+funders <- read.csv("funders_geo_200.csv")
+nih <- filter(funders, known_parent == "NIH")
 
-same <- inner_join(id_list, oa_ft_list, keep = TRUE)
-names(same)[1] ="inventory_ids"
-names(same)[2] ="epmc_query_ids"
+## get all IDs
+nih2 <- separate(nih, 'associated_PMIDs', paste("ID", 1:600, sep="_"), sep=",", extra="drop")
+nih2 <- nih2[,colSums(is.na(nih2))<nrow(nih2)]
+nih2 <- select(nih2, -1, -2, -3, -5, -6, -7, -263)
 
-write.csv(same,"inventory_FT_OA_ids_2022-11-21.csv", row.names = FALSE)
+nih3 <- nih2 %>%  pivot_longer(
+    cols = starts_with("ID"),
+    names_to = "ID",
+    values_to = "pmid",
+    values_drop_na = TRUE
+  )
+
+##===========================================================##
+####### PART 2: Query if each article for OA and PMC ID ####### 
+##===========================================================##
+
+id_list <- nih3$pmid
+id_list <- trimws(as.numeric(id_list))
+
+y  <- NULL;
+for (i in id_list) {
+  r <- sapply(i, epmc_details) 
+  pmid <- r[[1]]["pmid"]
+  pmcid <- tryCatch(r[[1]]["pmcid"], error = function(cond) {
+    message(paste("pmcid issue"))
+    message(cond, sep="\n")
+    return(NA)
+    force(do.next)})
+  oa <- r[[1]]["isOpenAccess"]
+  report <- cbind(pmid, pmcid, oa)
+  y <- rbind(y, report)
+}
+
+nih3$pmid <- trimws(as.numeric(nih3$pmid))
+
+nih4 <- left_join(nih3, y, by="pmid")
+nih4 <- unique(nih4)
+
+nih5 <- filter(nih4, isOpenAccess == "Y") ## note articles duplicated when >1 agency found
+
+##================================================##
+####### PART 3: Retrieve and Query Full Text ####### 
+##================================================##
+## from https://github.com/ropensci/tidypmc
+
+##retreive ft
+ft <- epmc_ftxt("PMC7145612")
+
+## convert into table
+txt <- pmc_text(ft)
+
+## search table for term
+found <- separate_text(txt, "verifiable")
+
+### for all articles ....
+
+id_ft <- unique(nih5$pmcid)
+
+test <- head(id_ft)
+test2 <- map(test, epmc_ftxt)
+
+##======================================================##
+####### PART 3: Retrieve Full Text for OA Articles ####### 
+##======================================================##
+
+### Save files ###
+
+## write.csv(nih2,"nih2.csv", row.names = FALSE)
