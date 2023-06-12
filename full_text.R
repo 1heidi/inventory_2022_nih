@@ -1,18 +1,19 @@
-## Purpose: Verify inventory articles with full text available in Europe PMC
-## Parts: 
-## Package(s): europepmc, tidyverse, xml2
-## Input file(s): 
-## Output file(s): 
+## Purpose: Search full text of NIH-assocaited inventory articles available as OA subset in Europe PMC
+## Parts: 1) Get NIH-associated IDs,  2) Query to get PMC ID and if OA, 3) Retrieve XML and search for terms, and 4) Save files
+## Package(s): europepmc, tidypmc, tidyverse, xml2, tidytext, readr
+## Input file(s): funders_geo_200.csv, final_inventory_2022.csv
+## Output file(s): NIH_biodata_resources_text_mined_example_2023-06-12.csv
 
 library(europepmc)
 library(tidypmc)
 library(tidyverse)
 library(xml2)
 library(tidytext)
+library(readr)
 
-##===========================================##
-####### PART 1: Get IDs ready for query ####### 
-##===========================================##
+##==========================================##
+####### PART 1: Get NIH-associated IDs ####### 
+##==========================================##
 
 funders <- read.csv("funders_geo_200.csv")
 nih <- filter(funders, known_parent == "NIH")
@@ -29,12 +30,13 @@ nih3 <- nih2 %>%  pivot_longer(
     values_drop_na = TRUE
   )
 
-##===========================================================##
-####### PART 2: Query if each article for OA and PMC ID ####### 
-##===========================================================##
+nih3$pmid <- trimws(as.numeric(nih3$pmid))
+
+##=================================================##
+####### PART 2: Query to get PMC ID and if OA ####### 
+##=================================================##
 
 id_list <- nih3$pmid
-id_list <- trimws(as.numeric(id_list))
 
 y  <- NULL;
 for (i in id_list) {
@@ -50,38 +52,72 @@ for (i in id_list) {
   y <- rbind(y, report)
 }
 
-nih3$pmid <- trimws(as.numeric(nih3$pmid))
-
 nih4 <- left_join(nih3, y, by="pmid")
 nih4 <- unique(nih4)
-
 nih5 <- filter(nih4, isOpenAccess == "Y") ## note articles duplicated when >1 agency found
 
-##================================================##
-####### PART 3: Retrieve and Query Full Text ####### 
-##================================================##
+##=====================================================##
+####### PART 3: Retrieve XML and search for terms ####### 
+##=====================================================##
 ## from https://github.com/ropensci/tidypmc
 
-##retreive ft
-ft <- epmc_ftxt("PMC7145612")
-
-## convert into table
-txt <- pmc_text(ft)
-
-## search table for term
-found <- separate_text(txt, "verifiable")
-
-### for all articles ....
-
+## get unique IDs
 id_ft <- unique(nih5$pmcid)
 
-test <- head(id_ft)
-test2 <- map(test, epmc_ftxt)
+## get full next and parse -- takes many minutes
+x  <- NULL;
+for (i in id_ft) {
+  doc <- epmc_ftxt(i)
+  m <- pmc_metadata(doc)
+  pmcid <- m$PMCID
+  doc2 <- pmc_text(doc)
+  report <- cbind(pmcid, doc2)
+  x <- rbind(x, report)
+}
 
-##======================================================##
-####### PART 3: Retrieve Full Text for OA Articles ####### 
-##======================================================##
+nih6 <- x
 
-### Save files ###
+## search for terms indicating deposit capability per line
+nih7 <- separate_text(nih6, ("upload*|deposit*"))
 
-## write.csv(nih2,"nih2.csv", row.names = FALSE)
+## aggregate for each PMCID
+nih8 <- nih7 %>%
+  group_by(pmcid) %>%
+    mutate(found_terms = paste(unique(match), collapse = ', '))
+nih9 <- unique(select(nih8, 2, 7))
+
+## names(nih9)[1] ="pmcid"
+
+## recombine with agency name
+
+nih10 <- left_join(nih5, nih9, by = "pmcid")
+nih10 <- select(nih10, 1, 3:6)
+
+## recombine with biodata resource best name
+
+inv <- read.csv("final_inventory_2022.csv")
+inv <- select(inv, 1:2)
+inv2 <- separate(inv, 'ID', paste("ID", 1:15, sep="_"), sep=",", extra="drop")
+inv2 <- inv2[,colSums(is.na(inv2))<nrow(inv2)]
+
+inv3 <- inv2 %>%  pivot_longer(
+  cols = starts_with("ID"),
+  names_to = "ID",
+  values_to = "pmid",
+  values_drop_na = TRUE
+)
+
+inv3$pmid <- trimws(as.numeric(inv3$pmid))
+inv3 <- select(inv3, 3, 1)
+inv3$pmid <- trimws(as.numeric(inv3$pmid))
+
+## correct one wonky name
+inv3$best_name[inv3$pmid == 34514416] <- "SCISSOR"
+
+nih11 <- left_join(nih10, inv3, by = "pmid")
+
+##==============================##
+####### PART 4: Save files ####### 
+##==============================##
+
+write.csv(nih11,"NIH_biodata_resources_text_mined_example_2023-06-12.csv", row.names = FALSE)
