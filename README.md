@@ -1,9 +1,8 @@
 # inventory_2022_nih
 
 ## Preliminary exploration of NIH repositories in the GBC Biodata Inventory
-## See associated repo: https://github.com/globalbiodata/inventory_2022
-
-### QUESTION: for biodata resources found in inventory with NIH-associated agencies (as found in article metadata) can full-text queries help determine which may be offer deposit capabilities? 
+### See associated repo: https://github.com/globalbiodata/inventory_2022
+### QUESTION: for biodata resources with NIH-associated agencies, can full-text queries help determine which offer deposit capabilities? 
 
 * starting with the manually curated "funders_geo_200.csv", which has article IDs as a list per individual agency as extracted from ePMC metadata already
 
