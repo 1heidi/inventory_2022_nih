@@ -18,4 +18,4 @@
   * aggregate found terms for each article ID since some found multiple
   * recombine with agency name from "funders_geo_200.csv"" and with biodata resource name from "final_inventory_2022.csv"
 
-* output file: NIH_biodata_resources_text_mined_example_2023-06-12.csv
+* output file: NIH_biodata_resources_text_mined_example_2023-06-12.csv -- see "found_terms" variable
