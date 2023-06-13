@@ -10,10 +10,10 @@
 * start with "funders_geo_200.csv", which has article IDs listed for each individual agency as extracted from ePMC metadata and was manually curated to flag agencies associated with NIH, then:
   * filter to only those with NIH as known parent
   * reshape to get agency names separated for each article ID
-    * = 1383 articles, some which will be duplicated b/c of multiple agencies/ID 
+    * = 1383 articles, some which will be duplicated b/c of multiple agencies/ID (716 unique article IDs)
   * query article IDs via ePMC API to retrieve full text status (OA = Y) 
   * filter to only OA = Y and deduplicate
-    * = 534 unique articles 
+    * = 534 unique articles (534/716 unique IDs = ~75% OA)
   * query those article IDs via ePMC API to get XML for all articles
   * parse and search for terms related to deposit capabilities
     * used upload* or deposit* as an example to test
