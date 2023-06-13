@@ -1,5 +1,5 @@
 ## Purpose: Search full text of NIH-assocaited inventory articles available as OA subset in Europe PMC
-## Parts: 1) Get NIH-associated IDs,  2) Query to get PMC ID and if OA, 3) Retrieve XML and search for terms, and 4) Save files
+## Parts: 1) Get NIH-associated IDs,  2) Query to get PMC ID and if OA, 3) Retrieve XML and search for terms, and 4) Save output
 ## Package(s): europepmc, tidypmc, tidyverse
 ## Input file(s): funders_geo_200.csv, final_inventory_2022.csv
 ## Output file(s): NIH_biodata_resources_text_mined_example_2023-06-13.csv
