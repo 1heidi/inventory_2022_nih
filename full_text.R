@@ -1,15 +1,12 @@
 ## Purpose: Search full text of NIH-assocaited inventory articles available as OA subset in Europe PMC
 ## Parts: 1) Get NIH-associated IDs,  2) Query to get PMC ID and if OA, 3) Retrieve XML and search for terms, and 4) Save files
-## Package(s): europepmc, tidypmc, tidyverse, xml2, tidytext, readr
+## Package(s): europepmc, tidypmc, tidyverse
 ## Input file(s): funders_geo_200.csv, final_inventory_2022.csv
-## Output file(s): NIH_biodata_resources_text_mined_example_2023-06-12.csv
+## Output file(s): NIH_biodata_resources_text_mined_example_2023-06-13.csv
 
 library(europepmc)
 library(tidypmc)
 library(tidyverse)
-library(xml2)
-library(tidytext)
-library(readr)
 
 ##==========================================##
 ####### PART 1: Get NIH-associated IDs ####### 
@@ -23,6 +20,7 @@ nih2 <- separate(nih, 'associated_PMIDs', paste("ID", 1:600, sep="_"), sep=",", 
 nih2 <- nih2[,colSums(is.na(nih2))<nrow(nih2)]
 nih2 <- select(nih2, -1, -2, -3, -5, -6, -7, -263)
 
+## reshape to get ID per cell
 nih3 <- nih2 %>%  pivot_longer(
     cols = starts_with("ID"),
     names_to = "ID",
@@ -59,7 +57,6 @@ nih5 <- filter(nih4, isOpenAccess == "Y") ## note articles duplicated when >1 ag
 ##=====================================================##
 ####### PART 3: Retrieve XML and search for terms ####### 
 ##=====================================================##
-## from https://github.com/ropensci/tidypmc
 
 ## get unique IDs
 id_ft <- unique(nih5$pmcid)
@@ -86,8 +83,6 @@ nih8 <- nih7 %>%
     mutate(found_terms = paste(unique(match), collapse = ', '))
 nih9 <- unique(select(nih8, 2, 7))
 
-## names(nih9)[1] ="pmcid"
-
 ## recombine with agency name
 
 nih10 <- left_join(nih5, nih9, by = "pmcid")
@@ -100,6 +95,7 @@ inv <- select(inv, 1:2)
 inv2 <- separate(inv, 'ID', paste("ID", 1:15, sep="_"), sep=",", extra="drop")
 inv2 <- inv2[,colSums(is.na(inv2))<nrow(inv2)]
 
+## reshape to get 1 ID per cell
 inv3 <- inv2 %>%  pivot_longer(
   cols = starts_with("ID"),
   names_to = "ID",
@@ -115,9 +111,10 @@ inv3$pmid <- trimws(as.numeric(inv3$pmid))
 inv3$best_name[inv3$pmid == 34514416] <- "SCISSOR"
 
 nih11 <- left_join(nih10, inv3, by = "pmid")
+nih11 <- unique(nih11) ## have a few duplicates b/c
 
 ##==============================##
 ####### PART 4: Save files ####### 
 ##==============================##
 
-write.csv(nih11,"NIH_biodata_resources_text_mined_example_2023-06-12.csv", row.names = FALSE)
+write.csv(nih11,"NIH_biodata_resources_text_mined_example_2023-06-13.csv", row.names = FALSE)
