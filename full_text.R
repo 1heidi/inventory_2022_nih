@@ -1,10 +1,10 @@
-## Purpose: Search full text of NIH-assocaited inventory articles available as OA subset in Europe PMC
-## Parts: 1a) Load Packages and Data, 1b) Functions, 2a) [tasks]... , 3), Save Files
+## Purpose: Search full text of NIH-associated inventory articles available as OA subset in Europe PMC for terms suggesting potential deposit capabilities.
+## Parts: 1a) load packages and data, 1b) define functions, 2a) filter data to NIH and isolate PMIDs, 2b) query to get PMC ID and if OA, 2c), retrieve XML and search for terms, 2d) join with biodata resource Best Name from GBC inventory, and 3) save files
 ## Input file(s): funders_geo_200.csv, final_inventory_2022.csv
-## Output file(s):
+## Output file(s): NIH_biodata_resources_text_mined_example_2023-08-01.csv
 
 ##===========================================##
-## PART 1a: Load Packages and Data -------------
+## PART 1a: load packages and data ------------
 ##===========================================##
 
 library(tidyverse)
@@ -14,20 +14,23 @@ library(tidypmc)
 
 funders <- read.csv("funders_geo_200.csv")
 inv <- read.csv("final_inventory_2022.csv")
-## correct one wonky name
+
+## correct a wonky name
 inv$best_name[inv$pmid == 34514416] <- "SCISSOR"
 
 ##===========================================##
-## PART 1b: Functions -------------------------
+## PART 1b: define functions -------------------------
 ##===========================================##
+
+## This function reshapes the data to have 1 PMID per row.
 
 setup_nih <- function(my_data) {
   
   d <- my_data |> 
     filter(known_parent == "NIH") |> 
-    separate('associated_PMIDs', paste("id", 1:600, sep="_"), sep=",", extra="drop") |> 
-    remove_empty(which = c("rows", "cols")) |>
-    select(-1, -2, -3, -5, -6, -7, -263) |>
+    separate('associated_PMIDs', paste("id", 1:((max(str_count(funders$associated_PMIDs, ',')))+1), sep="_"), sep=",", extra="drop") |> ## separate list of IDs into individual columns based on the max number of IDs via count of commas plus 1
+    remove_empty(which = c("rows", "cols")) |> ## just in case
+    select(-1, -2, -3, -5, -6, -7, -302) |> ## trim to just agency names and ids
     pivot_longer(
       cols = starts_with("id"),
       names_to = "id",
@@ -35,17 +38,19 @@ setup_nih <- function(my_data) {
       values_drop_na = TRUE
     ) |>
     mutate(across(where(is.character), str_trim))
-    
+
     return(d)
   
 }
+
+## This function reshapes the data to have 1 PMID per row.
 
 setup_inv <- function(my_data) {
   
   a <- my_data |> 
     select(1:2) |> 
-    separate('ID', paste("ID", 1:15, sep="_"), sep=",", extra="drop") |> 
-    remove_empty(which = c("rows", "cols")) |>
+    separate('ID', paste("ID", 1:((max(str_count(inv$ID, ',')))+1), sep="_"), sep=",", extra="drop") |> 
+    remove_empty(which = c("rows", "cols")) |> ## just in case
     pivot_longer(
       cols = starts_with("id"),
       names_to = "id",
@@ -59,13 +64,13 @@ setup_inv <- function(my_data) {
 }
 
 ##=============================================================##
-## PART 2a: Filter data to NIH and isolate PMIDs -----------------
+## PART 2a: filter data to NIH and isolate PMIDs -----------------
 ##=============================================================##
 
 nih <- setup_nih(funders)
 
 ##=======================================================##
-## PART 2b: Query to get PMC ID and if OA  -----------------
+## PART 2b: query to get PMC ID and if OA  -----------------
 ##=======================================================##
 
 id_list <- trimws(as.numeric(nih$pmid))
@@ -89,10 +94,11 @@ nih_oa <- unique(nih_oa) |>
   filter(isOpenAccess == "Y") ## note articles dup when >1 agency found
 
 ##=====================================================##
-## PART 2c: Retrieve XML and search for terms ------------ 
+## PART 2c: retrieve XML and search for terms ------------ 
 ##=====================================================##
 
 ## get unique IDs - note must pass pmcids to API
+
 id_ft <- unique(nih_oa$pmcid)
 
 ## get full next and parse -- takes many minutes
@@ -123,21 +129,20 @@ nih_terms <- nih_terms |>
 nih_terms <- left_join(nih_oa, nih_terms, by = "pmcid")
 nih_terms <- select(nih_terms, 1, 3, 6)
 
-##==================================================================##
-## PART 2d: Find Biodata Resource Best Name from Inventory ----------- 
-##==================================================================##
+##===========================================================================##
+## PART 2d: join with biodata resource Best Name from GBC inventory ----------- 
+##===========================================================================##
 
 inv <- setup_inv(inv)
 inv <- select(inv, 3, 1)
 
 nih_terms <- left_join(nih_terms, inv, by = "pmid")
-nih_terms <- unique(nih_terms)
+nih_terms <- select(nih_terms, 1, 2, 4, 3) |>
+             rename(best_name = best_name.x) |>
+             unique()
 
 ##===========================================##
-## PART 3: Save Files -------------------------
+## PART 3: save files -------------------------
 ##===========================================##
 
-write.csv(nih_terms, "NIH_biodata_resources_text_mined_example_2023-08-01.csv", row.names = FALSE)", row.names = FALSE)
-
-
-
+write.csv(nih_terms, "NIH_biodata_resources_text_mined_example_2023-08-01.csv", row.names = FALSE)
