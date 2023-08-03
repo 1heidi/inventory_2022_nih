@@ -19,7 +19,7 @@ inv <- read.csv("final_inventory_2022.csv")
 inv$best_name[inv$pmid == 34514416] <- "SCISSOR"
 
 ##===========================================##
-## PART 1b: define functions -------------------------
+## PART 1b: define functions ------------------
 ##===========================================##
 
 ## This function reshapes the data to have 1 PMID per row.
@@ -64,13 +64,13 @@ setup_inv <- function(my_data) {
 }
 
 ##=============================================================##
-## PART 2a: filter data to NIH and isolate PMIDs -----------------
+## PART 2a: filter data to NIH and isolate PMIDs ----------------
 ##=============================================================##
 
 nih <- setup_nih(funders)
 
 ##=======================================================##
-## PART 2b: query to get PMC ID and if OA  -----------------
+## PART 2b: query to get PMC ID and if OA -----------------
 ##=======================================================##
 
 id_list <- trimws(as.numeric(nih$pmid))
@@ -94,7 +94,7 @@ nih_oa <- unique(nih_oa) |>
   filter(isOpenAccess == "Y") ## note articles dup when >1 agency found
 
 ##=====================================================##
-## PART 2c: retrieve XML and search for terms ------------ 
+## PART 2c: retrieve XML and search for terms ----------- 
 ##=====================================================##
 
 ## get unique IDs - note must pass pmcids to API
