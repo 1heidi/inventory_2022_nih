@@ -22,7 +22,7 @@ inv$best_name[inv$pmid == 34514416] <- "SCISSOR"
 ## PART 1b: define functions ------------------
 ##===========================================##
 
-## This function reshapes the data to have 1 PMID per row.
+## This function reshapes the funder data to have 1 ID per row for all NIH associated PMIDs.
 
 setup_nih <- function(my_data) {
   
@@ -43,7 +43,7 @@ setup_nih <- function(my_data) {
   
 }
 
-## This function reshapes the data to have 1 PMID per row.
+## This function reshapes the GBC inventory data to have 1 PMID per row.
 
 setup_inv <- function(my_data) {
   
