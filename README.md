@@ -21,3 +21,7 @@
   * recombine with agency name from "funders_geo_200.csv" and with biodata resource "best name" from "final_inventory_2022.csv"
 
 * **output file:** NIH_biodata_resources_text_mined_example_2023-06-13.csv -- **see "found_terms" variable**
+
+* ** QUESTION: What are the characteristics of database names and is there any correlation with db topic or citation counts?
+
+  * query PMIDs against EPMC to retreive MESH headings and updated citation counts
